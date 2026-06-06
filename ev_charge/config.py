@@ -24,6 +24,7 @@ class Config:
     country: str
     spin: str | None
     vin: str | None
+    api_level: int
     # Alerting
     threshold: int
     backend: str
@@ -62,12 +63,18 @@ def load_config() -> Config:
     if not 0 <= threshold <= 100:
         raise ConfigError("BATTERY_THRESHOLD must be between 0 and 100")
 
+    try:
+        api_level = int(os.environ.get("AUDI_API_LEVEL", "1"))
+    except ValueError as exc:
+        raise ConfigError("AUDI_API_LEVEL must be an integer (1 for e-tron/Q4)") from exc
+
     cfg = Config(
         username=_require("AUDI_USERNAME"),
         password=_require("AUDI_PASSWORD"),
         country=_require("AUDI_COUNTRY"),
         spin=_optional("AUDI_SPIN"),
         vin=_optional("AUDI_VIN"),
+        api_level=api_level,
         threshold=threshold,
         backend=backend,
         notify_on_error=os.environ.get("NOTIFY_ON_ERROR", "false").strip().lower()

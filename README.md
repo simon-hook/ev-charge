@@ -4,14 +4,16 @@ A small Python tool that logs in to your **myAudi** account once a night, reads 
 e-tron** battery level, and sends a **push notification to your phone** when it drops **below 40%**
 — so you remember to plug in.
 
-- **Car data:** [`audiconnectpy`](https://github.com/cyr-ius/audiconnectpy) (unofficial myAudi
-  client; the same library behind the Home Assistant Audi integration).
-- **Schedule:** a cron job on your own always-on machine.
+- **Car data:** the myAudi client from the maintained
+  [audiconnect/audi_connect_ha](https://github.com/audiconnect/audi_connect_ha) integration,
+  vendored into `ev_charge/vendor/audiconnect/` (see that folder's README for the one-time copy).
+- **Schedule:** a cron job / Task Scheduler entry on your own always-on machine.
 - **Alerts:** [ntfy](https://ntfy.sh) by default (free, no account); Pushover or Telegram optional.
 
-> ⚠️ `audiconnectpy` is unofficial and reverse-engineered. Audi can change their cloud at any time
-> and break it. The version is pinned in `requirements.txt`, and the battery lookup fails *loudly*
-> rather than reporting a wrong number.
+> ⚠️ The Audi client is unofficial and reverse-engineered. Audi can change their cloud at any time
+> and break it. The battery lookup fails *loudly* rather than reporting a wrong number.
+> (The earlier PyPI library `audiconnectpy` was deleted by its author, which is why we vendor the
+> Home Assistant client instead.)
 
 ## How the push reaches your phone
 
@@ -22,47 +24,25 @@ server of your own and no inbound connection to your phone.
 
 ## Setup
 
-Install happens in **two steps** — the core deps (which always succeed), then the Audi client
-(which can be finicky and is kept separate so it can't block the rest):
-
 ```bash
 git clone <this-repo> ev-charge && cd ev-charge
 python3 -m venv .venv
 
-# 1. Core dependencies — always installs cleanly:
+# 1. Core dependencies (Python 3.12 recommended):
 .venv/bin/pip install -r requirements.txt
 
-# 2. Audi cloud client — needed for real battery reads (not for --test-notify):
-.venv/bin/pip install -r requirements-audi.txt
+# 2. Vendor the Audi client — one-time copy, see:
+#    ev_charge/vendor/audiconnect/README.md
+#    (needed for real battery reads; not needed for --test-notify)
 
 cp .env.example .env
 # edit .env with your myAudi login + ntfy topic (see below)
 ```
 
-> Keeping `audiconnectpy` in its own file matters: if it's listed alongside the core deps and
-> fails to resolve, pip aborts the **entire** install and you end up with nothing (e.g.
-> `ModuleNotFoundError: No module named 'requests'`).
-
-### If `audiconnectpy` (step 2) won't install
-
-`pip` may report `Could not find a version that satisfies the requirement audiconnectpy
-(from versions: none)`. The core tool and `--test-notify` still work without it; only the live
-battery read needs it. Fixes, in order of preference:
-
-1. **Use Python 3.12.** `audiconnectpy` does not support **Python 3.13+**, and
-   `(from versions: none)` is exactly what you see when your Python is too new. Check with
-   `python --version`. On Windows, install 3.12 and rebuild the venv with it (leaves 3.13 intact):
-   ```powershell
-   winget install Python.Python.3.12
-   Remove-Item -Recurse -Force .venv      # drop the old venv
-   py -3.12 -m venv .venv                  # build a 3.12 venv
-   .\.venv\Scripts\pip.exe install -r requirements.txt
-   .\.venv\Scripts\pip.exe install -r requirements-audi.txt
-   ```
-2. **Install from source** (needs [Git](https://git-scm.com/) on PATH):
-   ```bash
-   pip install "git+https://github.com/cyr-ius/audiconnectpy.git"
-   ```
+The Audi client is **vendored, not pip-installed** — its six `.py` files are copied from the
+[audi_connect_ha](https://github.com/audiconnect/audi_connect_ha) source. Full instructions are in
+**[`ev_charge/vendor/audiconnect/README.md`](ev_charge/vendor/audiconnect/README.md)**. Use
+**Python 3.12** for the venv; the client (and its deps) may not install/run on 3.13+ yet.
 
 ### Configure `.env`
 
@@ -72,6 +52,7 @@ battery read needs it. Fixes, in order of preference:
 | `AUDI_COUNTRY` | yes | Two-letter code for your account, e.g. `GB`, `DE`, `US`. |
 | `AUDI_SPIN` | no | S-PIN; not needed for read-only battery checks. |
 | `AUDI_VIN` | no | Pin to one car. Optional if you only have one. |
+| `AUDI_API_LEVEL` | no | `1` = e-tron/Q4 (default), `0` = legacy petrol/diesel. |
 | `BATTERY_THRESHOLD` | no | Default `40`. Alert fires when level is **strictly below** this. |
 | `NOTIFY_BACKEND` | no | `ntfy` (default), `pushover`, or `telegram`. |
 | `NOTIFY_ON_ERROR` | no | `true` to also get pushed when the check itself fails. Default `false`. |

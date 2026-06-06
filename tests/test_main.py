@@ -216,4 +216,4 @@ def test_extract_soc_prefers_explicit_soc_over_weaker_match():
 
 def test_find_vin_from_nested_data():
     raw = {"vehicle": {"vin": "WAUZZZ999"}}
-    assert audi._find_vin(object(), raw) == "WAUZZZ999"
+    assert audi._find_vin(raw) == "WAUZZZ999"

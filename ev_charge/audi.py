@@ -1,10 +1,10 @@
 """Connect to the myAudi cloud and read the battery state of charge.
 
-The exact attribute that holds the battery percentage differs between audiconnectpy
-versions and vehicle models, so rather than hard-coding one path we convert the vehicle
-object into a plain nested structure and search it for a state-of-charge field. This fails
-loudly (BatteryReadError) if nothing plausible is found, instead of silently reporting wrong
-data.
+Uses the vendored Audi client (see ev_charge/vendor/audiconnect/), which is the API layer
+extracted from the actively maintained Home Assistant `audi_connect_ha` integration. The exact
+battery attribute can still vary, so we read the client's `state_of_charge` property and fall back
+to searching the vehicle object for a state-of-charge field. This fails loudly (BatteryReadError)
+rather than reporting wrong data.
 """
 
 from __future__ import annotations
@@ -32,32 +32,45 @@ class BatteryReading:
 
 async def fetch_battery(cfg: Config) -> BatteryReading:
     """Log in to myAudi, locate the target vehicle, and return its battery reading."""
-    # Imported lazily so the rest of the package (and the tests) don't require the
-    # unofficial library to be installed.
     import aiohttp
-    from audiconnectpy import AudiConnect
+
+    try:
+        from .vendor.audiconnect.audi_connect_account import AudiConnectAccount
+    except ImportError as exc:
+        raise AudiError(
+            "Vendored Audi client not found under ev_charge/vendor/audiconnect/. "
+            "Run the one-time copy step in ev_charge/vendor/audiconnect/README.md."
+        ) from exc
 
     async with aiohttp.ClientSession() as session:
-        api = AudiConnect(session, cfg.username, cfg.password, cfg.country, cfg.spin)
+        account = AudiConnectAccount(
+            session, cfg.username, cfg.password, cfg.country, cfg.spin, cfg.api_level
+        )
         try:
-            await api.async_update()
+            await account.login()
+            await account.update(None)
         except Exception as exc:  # noqa: BLE001 - surface any login/fetch failure uniformly
-            raise AudiError(f"myAudi update failed: {exc}") from exc
+            raise AudiError(f"myAudi login/update failed: {exc}") from exc
 
-        vehicles = list(getattr(api, "vehicles", None) or [])
+        vehicles = list(getattr(account, "vehicles", None) or [])
         if not vehicles:
             raise AudiError("No vehicles found on this myAudi account")
 
         vehicle = _select_vehicle(vehicles, cfg.vin)
         raw = _to_plain(vehicle)
-        vin = _find_vin(vehicle, raw) or (cfg.vin or "unknown")
-        soc = _extract_soc(raw)
+        vin = (getattr(vehicle, "vin", None) or _find_vin(raw) or cfg.vin or "unknown")
+        if isinstance(vin, str):
+            vin = vin.strip()
+
+        soc = _vehicle_soc(vehicle)
+        if soc is None:
+            soc = _extract_soc(raw)  # fallback: scan the vehicle object
         if soc is None:
             raise BatteryReadError(
-                "Could not find a battery state-of-charge field for the vehicle. "
+                "Could not find a battery state-of-charge value for the vehicle. "
                 "Run with --dump to inspect the available data."
             )
-        return BatteryReading(soc=soc, vin=vin, raw=raw)
+        return BatteryReading(soc=soc, vin=str(vin), raw=raw)
 
 
 def _select_vehicle(vehicles: list, vin: str | None):
@@ -65,23 +78,30 @@ def _select_vehicle(vehicles: list, vin: str | None):
         return vehicles[0]
     target = vin.strip().upper()
     for v in vehicles:
-        found = _find_vin(v, _to_plain(v))
-        if found and found.upper() == target:
+        found = getattr(v, "vin", None) or _find_vin(_to_plain(v))
+        if isinstance(found, str) and found.strip().upper() == target:
             return v
     raise AudiError(f"VIN {vin} not found among {len(vehicles)} vehicle(s) on the account")
 
 
-def _find_vin(vehicle, raw: dict) -> str | None:
-    direct = getattr(vehicle, "vin", None)
-    if isinstance(direct, str) and direct.strip():
-        return direct.strip()
+def _vehicle_soc(vehicle) -> int | None:
+    """Read the client's own state-of-charge property, if it exposes one."""
+    if not getattr(vehicle, "state_of_charge_supported", True):
+        return None
+    try:
+        return _as_percentage(getattr(vehicle, "state_of_charge", None))
+    except Exception:  # noqa: BLE001 - property access can raise on partial data
+        return None
+
+
+def _find_vin(raw: dict) -> str | None:
     for key, value in _walk(raw):
         if isinstance(value, str) and "vin" in _tokens(key) and value.strip():
             return value.strip()
     return None
 
 
-# --- state-of-charge detection ---------------------------------------------------------
+# --- state-of-charge detection (fallback) ----------------------------------------------
 
 def _extract_soc(raw: dict) -> int | None:
     """Search the plain vehicle data for the most likely battery percentage."""
@@ -157,7 +177,7 @@ def _to_plain(obj, depth: int = 0, _seen: set[int] | None = None):
         return {
             str(k): _to_plain(v, depth + 1, _seen)
             for k, v in attrs.items()
-            if not str(k).startswith("_")
+            if not str(k).startswith("_") or str(k) in ("_vehicle", "_vin")
         }
     return repr(obj)
 
