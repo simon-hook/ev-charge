@@ -31,6 +31,20 @@ cp .env.example .env
 # edit .env with your myAudi login + ntfy topic (see below)
 ```
 
+### If `audiconnectpy` won't install
+
+`pip` may report `Could not find a version that satisfies the requirement audiconnectpy
+(from versions: none)`. This means PyPI has no release installable on your Python version (or the
+release was pulled). Fixes, in order of preference:
+
+1. **Install from source** (needs [Git](https://git-scm.com/) on PATH):
+   ```bash
+   pip install "git+https://github.com/cyr-ius/audiconnectpy.git"
+   ```
+2. **Check your Python version** — `python --version`. The library targets a recent Python; if
+   you're on something old (≤3.10) or very new where no wheel exists, install a 3.11/3.12 build
+   and recreate the venv with it.
+
 ### Configure `.env`
 
 | Variable | Required | Notes |

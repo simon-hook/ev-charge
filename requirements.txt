@@ -1,6 +1,12 @@
 # Audi myAudi cloud client (unofficial; powers the Home Assistant audi_connect integration).
-# Pinned so a breaking upstream change can't silently alter the battery field we read.
-audiconnectpy==2.5.1
+# Left unpinned because exact versions are not always installable on every Python version
+# (a hard pin fails with "Could not find a version ... (from versions: none)"). The battery
+# field detector in ev_charge/audi.py is written to tolerate API differences across versions.
+#
+# If PyPI has no installable version for your Python, install from source instead (needs Git):
+#   pip install "git+https://github.com/cyr-ius/audiconnectpy.git"
+# and you can then remove the line below.
+audiconnectpy
 aiohttp>=3.9
 requests>=2.31
 python-dotenv>=1.0
