@@ -41,9 +41,18 @@ release was pulled). Fixes, in order of preference:
    ```bash
    pip install "git+https://github.com/cyr-ius/audiconnectpy.git"
    ```
-2. **Check your Python version** — `python --version`. The library targets a recent Python; if
-   you're on something old (≤3.10) or very new where no wheel exists, install a 3.11/3.12 build
-   and recreate the venv with it.
+2. **Check your Python version** — `python --version`. `audiconnectpy` does not yet support
+   **Python 3.13+**, and `(from versions: none)` is exactly what you see when your Python is too
+   new. Install **Python 3.12** and build the venv with it (see Windows commands below); this
+   leaves your existing 3.13 untouched.
+
+   On Windows:
+   ```powershell
+   winget install Python.Python.3.12
+   Remove-Item -Recurse -Force .venv      # drop the 3.13 venv
+   py -3.12 -m venv .venv                  # build a 3.12 venv
+   .\.venv\Scripts\pip.exe install -r requirements.txt
+   ```
 
 ### Configure `.env`
 
