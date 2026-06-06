@@ -1,0 +1,13 @@
+# Audi Q4 nightly battery check.
+#
+# Install with:  crontab -e   (then paste the line below, adjusting the paths)
+# View logs:     tail -f /path/to/ev-charge/battery.log
+#
+# Notes:
+#   * cron runs with a minimal environment, so we cd into the project directory; config.py
+#     loads ./.env from there via python-dotenv. (Alternatively set the AUDI_* / NTFY_* vars
+#     directly in this crontab.)
+#   * Use the venv's python so audiconnectpy/requests are importable.
+#
+# Runs nightly at 02:00:
+0 2 * * * cd /path/to/ev-charge && /path/to/ev-charge/.venv/bin/python check_battery.py >> /path/to/ev-charge/battery.log 2>&1

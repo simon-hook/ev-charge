@@ -1,0 +1,9 @@
+# Audi myAudi cloud client (unofficial; powers the Home Assistant audi_connect integration).
+# Pinned so a breaking upstream change can't silently alter the battery field we read.
+audiconnectpy==2.5.1
+aiohttp>=3.9
+requests>=2.31
+python-dotenv>=1.0
+
+# Dev / tests
+pytest>=8.0
