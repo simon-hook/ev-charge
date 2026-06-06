@@ -69,6 +69,8 @@ If `--dump` shows your battery but the headline `battery=…%` looks wrong, open
 
 ## Schedule it nightly
 
+### macOS / Linux
+
 See `crontab.example`. In short, `crontab -e` and add (adjust the paths):
 
 ```cron
@@ -77,6 +79,28 @@ See `crontab.example`. In short, `crontab -e` and add (adjust the paths):
 
 `cd`-ing into the project dir lets `python-dotenv` load `./.env`. Watch it with
 `tail -f battery.log`.
+
+### Windows (Task Scheduler)
+
+Use the bundled `check_battery.bat` (it `cd`s to the repo and logs to `battery.log`). Create the
+task from PowerShell — the flags make it run after a missed start (e.g. the laptop was asleep) and
+wake the machine if it can:
+
+```powershell
+$action  = New-ScheduledTaskAction -Execute "C:\path\to\ev-charge\check_battery.bat"
+$trigger = New-ScheduledTaskTrigger -Daily -At 2am
+$settings = New-ScheduledTaskSettingsSet -StartWhenAvailable -WakeToRun
+Register-ScheduledTask -TaskName "Audi Q4 battery check" -Action $action -Trigger $trigger -Settings $settings
+```
+
+- `-StartWhenAvailable` runs the job as soon as possible if the scheduled time was missed.
+- `-WakeToRun` wakes the laptop from **sleep** (not shutdown, and only if hardware/power settings allow).
+- A laptop that's fully **shut down** at 2am won't run the job at all — pick a time the machine is on,
+  or use an always-on host.
+
+> **Note:** the laptop must be awake (or able to wake) at the scheduled time. If it's usually closed
+> and powered off overnight, schedule a daytime time instead, or run this on a Raspberry Pi /
+> GitHub Actions instead.
 
 ## Tests
 
