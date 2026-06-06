@@ -22,36 +22,46 @@ server of your own and no inbound connection to your phone.
 
 ## Setup
 
+Install happens in **two steps** — the core deps (which always succeed), then the Audi client
+(which can be finicky and is kept separate so it can't block the rest):
+
 ```bash
 git clone <this-repo> ev-charge && cd ev-charge
 python3 -m venv .venv
+
+# 1. Core dependencies — always installs cleanly:
 .venv/bin/pip install -r requirements.txt
+
+# 2. Audi cloud client — needed for real battery reads (not for --test-notify):
+.venv/bin/pip install -r requirements-audi.txt
 
 cp .env.example .env
 # edit .env with your myAudi login + ntfy topic (see below)
 ```
 
-### If `audiconnectpy` won't install
+> Keeping `audiconnectpy` in its own file matters: if it's listed alongside the core deps and
+> fails to resolve, pip aborts the **entire** install and you end up with nothing (e.g.
+> `ModuleNotFoundError: No module named 'requests'`).
+
+### If `audiconnectpy` (step 2) won't install
 
 `pip` may report `Could not find a version that satisfies the requirement audiconnectpy
-(from versions: none)`. This means PyPI has no release installable on your Python version (or the
-release was pulled). Fixes, in order of preference:
+(from versions: none)`. The core tool and `--test-notify` still work without it; only the live
+battery read needs it. Fixes, in order of preference:
 
-1. **Install from source** (needs [Git](https://git-scm.com/) on PATH):
-   ```bash
-   pip install "git+https://github.com/cyr-ius/audiconnectpy.git"
-   ```
-2. **Check your Python version** — `python --version`. `audiconnectpy` does not yet support
-   **Python 3.13+**, and `(from versions: none)` is exactly what you see when your Python is too
-   new. Install **Python 3.12** and build the venv with it (see Windows commands below); this
-   leaves your existing 3.13 untouched.
-
-   On Windows:
+1. **Use Python 3.12.** `audiconnectpy` does not support **Python 3.13+**, and
+   `(from versions: none)` is exactly what you see when your Python is too new. Check with
+   `python --version`. On Windows, install 3.12 and rebuild the venv with it (leaves 3.13 intact):
    ```powershell
    winget install Python.Python.3.12
-   Remove-Item -Recurse -Force .venv      # drop the 3.13 venv
+   Remove-Item -Recurse -Force .venv      # drop the old venv
    py -3.12 -m venv .venv                  # build a 3.12 venv
    .\.venv\Scripts\pip.exe install -r requirements.txt
+   .\.venv\Scripts\pip.exe install -r requirements-audi.txt
+   ```
+2. **Install from source** (needs [Git](https://git-scm.com/) on PATH):
+   ```bash
+   pip install "git+https://github.com/cyr-ius/audiconnectpy.git"
    ```
 
 ### Configure `.env`

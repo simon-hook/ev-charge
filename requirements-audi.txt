@@ -1,0 +1,8 @@
+# The Audi cloud client, kept separate from requirements.txt so a failure here can't block the
+# core dependencies. Needed for the real battery read (--dump and scheduled runs); NOT needed for
+# --test-notify. Try this first:
+audiconnectpy
+
+# If the line above fails with "Could not find a version ... (from versions: none)", comment it
+# out and install from source instead (needs Git on PATH):
+#   pip install "git+https://github.com/cyr-ius/audiconnectpy.git"
