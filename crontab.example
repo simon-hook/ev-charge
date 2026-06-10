@@ -7,7 +7,7 @@
 #   * cron runs with a minimal environment, so we cd into the project directory; config.py
 #     loads ./.env from there via python-dotenv. (Alternatively set the AUDI_* / NTFY_* vars
 #     directly in this crontab.)
-#   * Use the venv's python so audiconnectpy/requests are importable.
+#   * Use the venv's python so the vendored Audi client / requests are importable.
 #
-# Runs nightly at 02:00:
-0 2 * * * cd /path/to/ev-charge && /path/to/ev-charge/.venv/bin/python check_battery.py >> /path/to/ev-charge/battery.log 2>&1
+# Runs daily at 18:00 (6pm):
+0 18 * * * cd /path/to/ev-charge && /path/to/ev-charge/.venv/bin/python check_battery.py >> /path/to/ev-charge/battery.log 2>&1
