@@ -44,6 +44,13 @@ const.py
 If the run complains that another `audiconnect` module is missing (an import we didn't anticipate),
 copy that one file too from the same source folder and re-run.
 
+## Note on the `homeassistant` import
+
+`const.py` does `from homeassistant.const import CONF_PASSWORD, CONF_USERNAME, Platform`. We do
+**not** install Home Assistant — `ev_charge/audi.py` injects a tiny shim (`_install_ha_shim`)
+providing exactly those names before the client loads. So you can copy the files unmodified; no
+patching needed.
+
 ## License / attribution
 
 These files are the property of the `audi_connect_ha` authors and retain their original license

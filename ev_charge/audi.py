@@ -30,16 +30,46 @@ class BatteryReading:
     raw: dict  # plain-data snapshot of the vehicle, for --dump / debugging
 
 
+def _install_ha_shim() -> None:
+    """Satisfy the handful of ``homeassistant.const`` names the vendored ``const.py`` imports,
+    so the client runs standalone without installing Home Assistant. Idempotent and harmless if
+    Home Assistant *is* installed (we don't overwrite a real module).
+    """
+    import sys
+    import types
+
+    if "homeassistant.const" in sys.modules or "homeassistant" in sys.modules:
+        return
+
+    class _PlatformMeta(type):
+        # const.py builds PLATFORMS = [Platform.SENSOR, ...]; any member name resolves to a string.
+        def __getattr__(cls, name):
+            return name.lower()
+
+    class Platform(metaclass=_PlatformMeta):
+        pass
+
+    ha = types.ModuleType("homeassistant")
+    const = types.ModuleType("homeassistant.const")
+    const.CONF_PASSWORD = "password"
+    const.CONF_USERNAME = "username"
+    const.Platform = Platform
+    ha.const = const
+    sys.modules["homeassistant"] = ha
+    sys.modules["homeassistant.const"] = const
+
+
 async def fetch_battery(cfg: Config) -> BatteryReading:
     """Log in to myAudi, locate the target vehicle, and return its battery reading."""
     import aiohttp
 
+    _install_ha_shim()
     try:
         from .vendor.audiconnect.audi_connect_account import AudiConnectAccount
     except ImportError as exc:
         raise AudiError(
-            "Vendored Audi client not found under ev_charge/vendor/audiconnect/. "
-            "Run the one-time copy step in ev_charge/vendor/audiconnect/README.md."
+            f"Could not import the vendored Audi client ({exc}). Make sure the six .py files are "
+            "present under ev_charge/vendor/audiconnect/ — see its README.md."
         ) from exc
 
     async with aiohttp.ClientSession() as session:
